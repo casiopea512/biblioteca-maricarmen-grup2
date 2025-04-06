@@ -149,6 +149,16 @@ def import_usuaris(request, file: UploadedFile):
             errors.append(f"Línia {i}: Correu electrònic invàlid")
             continue
 
+        parts = email.split("@")
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            errors.append(f"Línia {i}: Correu electrònic invàlid")
+            continue
+
+        username_part, domain_part = parts
+        if domain_part.startswith(".") or domain_part.endswith(".") or "." not in domain_part:
+            errors.append(f"Línia {i}: Correu electrònic invàlid")
+            continue
+
         if not telefon.isdigit() or len(telefon) != 9:
             errors.append(f"Línia {i}: Telèfon invàlid")
             continue
