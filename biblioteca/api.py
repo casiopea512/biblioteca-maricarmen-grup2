@@ -35,6 +35,29 @@ class AuthBearer(HttpBearer):
 def obtenir_token(request):
     return {"token": request.auth}
 
+
+# Endpoint para obetener el tipo de usuario
+class UserInfo(Schema):
+    username: str
+    is_staff: bool
+    is_superuser: bool
+    email: str
+    first_name: str
+    last_name: str
+
+@api.get("/usuari/qui-soc", response=UserInfo, auth=AuthBearer())
+def qui_soc(request):
+    user = request.auth
+    return {
+        "username": user.username,
+        "is_staff": user.is_staff,
+        "is_superuser": user.is_superuser,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "id": user.id,
+    }
+
 class CatalegOut(Schema):
     id: int
     titol: str
