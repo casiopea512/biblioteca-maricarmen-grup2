@@ -123,6 +123,8 @@ class Reserva(models.Model):
     usuari = models.ForeignKey(Usuari, on_delete=models.CASCADE)
     exemplar = models.ForeignKey(Exemplar, on_delete=models.CASCADE)
     data = models.DateField(auto_now_add=True)
+    def __str__(self):
+        return f"Reserva de {self.usuari.username} para {self.exemplar.cataleg.titol}"
 
 class Prestec(models.Model):
     class Meta:
