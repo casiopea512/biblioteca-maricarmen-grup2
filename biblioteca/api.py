@@ -116,7 +116,6 @@ def get_exemplars(request):
 
     return result
 
-
 class CSVImportResult(Schema):
     created: int
     errors: List[str]
