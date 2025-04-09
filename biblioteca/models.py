@@ -102,15 +102,20 @@ class Imatge(models.Model):
 
 class Centre(models.Model):
     nom = models.CharField(max_length=200)
+    def __str__(self):
+        return self.nom
 
 class Cicle(models.Model):
     nom = models.CharField(max_length=200)
+    def __str__(self):
+        return self.nom
 
 class Usuari(AbstractUser):
     centre = models.ForeignKey(Centre,on_delete=models.SET_NULL,null=True,blank=True)
     cicle = models.ForeignKey(Cicle,on_delete=models.SET_NULL,null=True,blank=True)
     imatge = models.ImageField(upload_to='usuaris/',null=True,blank=True)
     auth_token = models.CharField(max_length=32,blank=True,null=True)
+    telefon = models.CharField(max_length=15, null=True, blank=True)
 
 class Reserva(models.Model):
     class Meta:
@@ -118,6 +123,8 @@ class Reserva(models.Model):
     usuari = models.ForeignKey(Usuari, on_delete=models.CASCADE)
     exemplar = models.ForeignKey(Exemplar, on_delete=models.CASCADE)
     data = models.DateField(auto_now_add=True)
+    def __str__(self):
+        return f"Reserva de {self.usuari.username} para {self.exemplar.cataleg.titol}"
 
 class Prestec(models.Model):
     class Meta:
