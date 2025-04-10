@@ -4,6 +4,8 @@ from ninja.security import HttpBasicAuth, HttpBearer
 from .models import *
 from typing import List, Optional, Union, Literal
 import secrets
+from ninja.files import UploadedFile
+import csv
 
 api = NinjaAPI()
 
@@ -34,6 +36,29 @@ class AuthBearer(HttpBearer):
 @api.get("/token/", auth=BasicAuth())
 def obtenir_token(request):
     return {"token": request.auth}
+
+
+# Endpoint para obetener el tipo de usuario
+class UserInfo(Schema):
+    username: str
+    is_staff: bool
+    is_superuser: bool
+    email: str
+    first_name: str
+    last_name: str
+
+@api.get("/usuari/qui-soc", response=UserInfo, auth=AuthBearer())
+def qui_soc(request):
+    user = request.auth
+    return {
+        "username": user.username,
+        "is_staff": user.is_staff,
+        "is_superuser": user.is_superuser,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "id": user.id,
+    }
 
 class CatalegOut(Schema):
     id: int
@@ -113,3 +138,70 @@ def get_exemplars(request):
         )
 
     return result
+
+class CSVImportResult(Schema):
+    created: int
+    errors: List[str]
+
+@api.post("/import-csv", response=CSVImportResult)
+def import_usuaris(request, file: UploadedFile):
+    if not file.name.endswith(".csv"):
+        return CSVImportResult(created=0, errors=["El fitxer no és un .csv"])
+
+    decoded = file.read().decode("utf-8").splitlines()
+    if not decoded:
+        return CSVImportResult(created=0, errors=["El fitxer està buit"])
+    
+    reader = csv.reader(decoded)
+    created = 0
+    errors = []
+
+    for i, row in enumerate(reader, start=1):
+        if len(row) != 7:
+            errors.append(f"Línia {i}: format incorrecte (esperat 7 columnes)")
+            continue
+
+        nom, cognom1, cognom2, email, telefon, centre_nom, cicle_nom = row
+
+        if not nom or not cognom1:
+            errors.append(f"Línia {i}: Falta nom o cognoms")
+            continue
+
+        if not email or "@" not in email or "." not in email:
+            errors.append(f"Línia {i}: Correu electrònic invàlid")
+            continue
+
+        parts = email.split("@")
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            errors.append(f"Línia {i}: Correu electrònic invàlid")
+            continue
+
+        username_part, domain_part = parts
+        if domain_part.startswith(".") or domain_part.endswith(".") or "." not in domain_part:
+            errors.append(f"Línia {i}: Correu electrònic invàlid")
+            continue
+
+        if not telefon.isdigit() or len(telefon) != 9:
+            errors.append(f"Línia {i}: Telèfon invàlid")
+            continue
+
+        if Usuari.objects.filter(email=email).exists():
+            errors.append(f"Línia {i}: Usuari amb aquest correu ja existeix")
+            continue
+
+        centre, created_centre = Centre.objects.get_or_create(nom=centre_nom)
+        cicle, created_cicle = Cicle.objects.get_or_create(nom=cicle_nom)
+
+        Usuari.objects.create(
+            username=email,
+            first_name=nom,
+            last_name=f"{cognom1} {cognom2}",
+            email=email,
+            telefon=telefon,
+            centre=centre,
+            cicle=cicle,
+            password=make_password('user123')
+        )
+        created += 1
+
+    return CSVImportResult(created=created, errors=errors)
