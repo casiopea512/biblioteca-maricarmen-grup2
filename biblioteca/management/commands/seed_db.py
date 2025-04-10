@@ -441,8 +441,8 @@ class Command(BaseCommand):
 
     def _create_users(self, fake, count):
         with tqdm(total=count, desc="Creating users") as pbar:
-            centres = Centre.objects.get_or_create(nom='Institut Esteve Terrades i Illa')
-            cicles = Cicle.objects.get_or_create(nom='AWS2')
+            centre, _ = Centre.objects.get_or_create(nom='Institut Esteve Terrades i Illa')
+            cicle, _ = Cicle.objects.get_or_create(nom='AWS2')
             
             for _ in range(count):
                 first_name = fake.first_name()
@@ -456,8 +456,8 @@ class Command(BaseCommand):
                     first_name=first_name,
                     last_name=last_name,
                     is_active=True,
-                    centre=random.choice(centres) if centres else None,
-                    cicle=random.choice(cicles) if cicles else None,
+                    centre=centre,
+                    cicle=cicle,
                     telefon=f"6{random.randint(10000000, 99999999)}"
                 )
                 user.set_password('contrasenya')  # Set a default password
