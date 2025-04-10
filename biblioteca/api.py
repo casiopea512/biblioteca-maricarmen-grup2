@@ -46,6 +46,7 @@ class UserInfo(Schema):
     email: str
     first_name: str
     last_name: str
+    imatge: Optional[str]
 
 @api.get("/usuari/qui-soc", response=UserInfo, auth=AuthBearer())
 def qui_soc(request):
@@ -58,7 +59,26 @@ def qui_soc(request):
         "first_name": user.first_name,
         "last_name": user.last_name,
         "id": user.id,
+        "imatge": user.imatge.url if user.imatge else None
     }
+
+# Endpoint per actualitzar el perfil d'usuari
+class UpdateUserProfile(Schema):
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+
+@api.put("/usuari/actualitzar-perfil", auth=AuthBearer())
+def update_profile(request, payload: UpdateUserProfile):
+    user = request.auth
+    user.username = payload.username
+    user.email = payload.email
+    user.first_name = payload.first_name
+    user.last_name = payload.last_name
+    user.save()
+    return {"success": True}
+
 
 class CatalegOut(Schema):
     id: int
