@@ -44,6 +44,7 @@ class UserInfo(Schema):
     email: str
     first_name: str
     last_name: str
+    imatge: Optional[str]
 
 @api.get("/usuari/qui-soc", response=UserInfo, auth=AuthBearer())
 def qui_soc(request):
@@ -56,6 +57,7 @@ def qui_soc(request):
         "first_name": user.first_name,
         "last_name": user.last_name,
         "id": user.id,
+        "imatge": user.imatge.url if user.imatge else None
     }
 
 # Endpoint per actualitzar el perfil d'usuari
