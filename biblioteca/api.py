@@ -182,56 +182,56 @@ def get_exemplars(request):
 
 class CSVImportResult(Schema):
     created: int
-    errors: List[str]
+    feedback: List[str]
 
 @api.post("/import-csv", response=CSVImportResult)
 def import_usuaris(request, file: UploadedFile):
     if not file.name.endswith(".csv"):
-        return CSVImportResult(created=0, errors=["El fitxer no és un .csv"])
+        return CSVImportResult(created=0, feedback=["El fitxer no és un .csv"])
 
     decoded = file.read().decode("utf-8").splitlines()
     if not decoded:
-        return CSVImportResult(created=0, errors=["El fitxer està buit"])
+        return CSVImportResult(created=0, feedback=["El fitxer està buit"])
     
     reader = csv.reader(decoded)
     created = 0
-    errors = []
+    feedback = []
 
     for i, row in enumerate(reader, start=1):
         if len(row) != 7:
-            errors.append(f"Línia {i}: format incorrecte (esperat 7 columnes)")
+            feedback.append(f"Línia {i}: format incorrecte (esperat 7 columnes)")
             continue
 
         nom, cognom1, cognom2, email, telefon, centre_nom, cicle_nom = row
 
         if not nom or not cognom1:
-            errors.append(f"Línia {i}: Falta nom o cognoms")
+            feedback.append(f"Línia {i}: Falta nom o cognoms")
             continue
 
         if not email or "@" not in email or "." not in email:
-            errors.append(f"Línia {i}: Correu electrònic invàlid")
+            feedback.append(f"Línia {i}: Correu electrònic invàlid")
             continue
 
         parts = email.split("@")
         if len(parts) != 2 or not parts[0] or not parts[1]:
-            errors.append(f"Línia {i}: Correu electrònic invàlid")
+            feedback.append(f"Línia {i}: Correu electrònic invàlid")
             continue
 
         username_part, domain_part = parts
         if domain_part.startswith(".") or domain_part.endswith(".") or "." not in domain_part:
-            errors.append(f"Línia {i}: Correu electrònic invàlid")
+            feedback.append(f"Línia {i}: Correu electrònic invàlid")
             continue
 
         if not telefon.isdigit() or len(telefon) != 9:
-            errors.append(f"Línia {i}: Telèfon invàlid")
+            feedback.append(f"Línia {i}: Telèfon invàlid")
             continue
 
         if Usuari.objects.filter(email=email).exists():
-            errors.append(f"Línia {i}: Usuari amb aquest correu ja existeix")
+            feedback.append(f"Línia {i}: Usuari amb aquest correu ja existeix")
             continue
 
-        centre, created_centre = Centre.objects.get_or_create(nom=centre_nom)
-        cicle, created_cicle = Cicle.objects.get_or_create(nom=cicle_nom)
+        centre, _ = Centre.objects.get_or_create(nom=centre_nom)
+        cicle, _ = Cicle.objects.get_or_create(nom=cicle_nom)
 
         Usuari.objects.create(
             username=email,
@@ -244,5 +244,6 @@ def import_usuaris(request, file: UploadedFile):
             password=make_password('user123')
         )
         created += 1
+        feedback.append(f"Línia {i}: Usuari afegit correctament")
 
-    return CSVImportResult(created=created, errors=errors)
+    return CSVImportResult(created=created, feedback=feedback)
