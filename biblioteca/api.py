@@ -40,6 +40,7 @@ def obtenir_token(request):
 
 # Endpoint para obetener el tipo de usuario
 class UserInfo(Schema):
+    id: int
     username: str
     is_staff: bool
     is_superuser: bool
@@ -47,19 +48,25 @@ class UserInfo(Schema):
     first_name: str
     last_name: str
     imatge: Optional[str]
+    telefon: str
+    centre: Optional[str]
+    cicle: Optional[str]
 
 @api.get("/usuari/qui-soc", response=UserInfo, auth=AuthBearer())
 def qui_soc(request):
     user = request.auth
     return {
+        "id": user.id,
         "username": user.username,
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
-        "id": user.id,
-        "imatge": user.imatge.url if user.imatge else None
+        "imatge": user.imatge.url if user.imatge else None,
+        "telefon": user.telefon,
+        "centre": user.centre.nom if hasattr(user, "centre") and user.centre else None,
+        "cicle": user.cicle.nom if hasattr(user, "cicle") and user.cicle else None,
     }
 
 # Endpoint per actualitzar el perfil d'usuari
@@ -68,6 +75,9 @@ class UpdateUserProfile(Schema):
     email: str
     first_name: str
     last_name: str
+    telefon: str
+    centre: Optional[str]  # Se espera el nom del centre
+    cicle: Optional[str]   # Se espera el nom del cicle
 
 @api.put("/usuari/actualitzar-perfil", auth=AuthBearer())
 def update_profile(request, payload: UpdateUserProfile):
@@ -76,6 +86,17 @@ def update_profile(request, payload: UpdateUserProfile):
     user.email = payload.email
     user.first_name = payload.first_name
     user.last_name = payload.last_name
+    user.telefon = payload.telefon
+    if payload.centre:
+        centre_obj, _ = Centre.objects.get_or_create(nom=payload.centre)
+        user.centre = centre_obj
+    else:
+        user.centre = None
+    if payload.cicle:
+        cicle_obj, _ = Cicle.objects.get_or_create(nom=payload.cicle)
+        user.cicle = cicle_obj
+    else:
+        user.cicle = None
     user.save()
     return {"success": True}
 
