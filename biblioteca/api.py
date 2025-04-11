@@ -7,6 +7,8 @@ import secrets
 from ninja.files import UploadedFile
 import csv
 
+strcataleg = Literal["llibre", "indefinit"]
+
 api = NinjaAPI()
 
 
@@ -116,27 +118,25 @@ class ExemplarOut(Schema):
     exclos_prestec: bool
     baixa: bool
     cataleg: Union[LlibreOut,CatalegOut]
-    tipus: str
+    tipus: strcataleg
 
 class LlibreIn(Schema):
     titol: str
     editorial: str
 
 
-@api.get("/llibres", response=List[LlibreOut])
-@api.get("/llibres/", response=List[LlibreOut])
-#@api.get("/llibres/", response=List[LlibreOut], auth=AuthBearer())
+@api.get("/cataleg", response=List[Union[LlibreOut, CatalegOut]])
+@api.get("/cataleg/", response=List[Union[LlibreOut, CatalegOut]])
 def get_llibres(request):
-    qs = Llibre.objects.all()
-    return qs
-
-@api.post("/llibres/")
-def post_llibres(request, payload: LlibreIn):
-    llibre = Llibre.objects.create(**payload.dict())
-    return {
-        "id": llibre.id,
-        "titol": llibre.titol
-    }
+    qs = Cataleg.objects.all()
+    result = []
+    for item in qs:
+        if hasattr(item, "llibre"):
+            schema = LlibreOut.from_orm(item.llibre)
+        else:
+            schema = CatalegOut.from_orm(item)
+        result.append(schema)
+    return result
 
 @api.get("/exemplars", response=List[ExemplarOut])
 @api.get("/exemplars/", response=List[ExemplarOut])
