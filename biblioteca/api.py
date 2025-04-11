@@ -180,6 +180,18 @@ def get_exemplars(request):
 
     return result
 
+@api.get("/cataleg/{tipus}/{catalog_pk}", response=Union[LlibreOut, CatalegOut])
+def get_cataleg_detail(request, tipus: strcataleg, catalog_pk: int):
+    try:
+        catalog_item = Cataleg.objects.get(pk=catalog_pk)
+    except Cataleg.DoesNotExist:
+        return api.create_response(request, {"error": "Catàleg no trobat"}, status=404)
+    
+    if tipus == "llibre" and hasattr(catalog_item, "llibre"):
+        return LlibreOut.from_orm(catalog_item.llibre)
+    else:
+        return CatalegOut.from_orm(catalog_item)
+
 class CSVImportResult(Schema):
     created: int
     feedback: List[str]
