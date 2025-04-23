@@ -71,6 +71,7 @@ def qui_soc(request):
         "cicle": user.cicle.nom if hasattr(user, "cicle") and user.cicle else None,
     }
 
+
 # Endpoint per actualitzar el perfil d'usuari
 class UpdateUserProfile(Schema):
     username: str
@@ -180,18 +181,50 @@ def get_exemplars(request):
 
     return result
 
-@api.get("/cataleg/{tipus}/{catalog_pk}", response=Union[LlibreOut, CatalegOut])
+
+# Endpoint per obtenir detalls d'un catàleg
+class CatalogItemDetail(Schema):
+    cataleg: Union[LlibreOut, CatalegOut]
+    exemplars: List[ExemplarOut]
+
+@api.get("/cataleg/{tipus}/{catalog_pk}", response=CatalogItemDetail)
 def get_cataleg_detail(request, tipus: strcataleg, catalog_pk: int):
     try:
         catalog_item = Cataleg.objects.get(pk=catalog_pk)
     except Cataleg.DoesNotExist:
         return api.create_response(request, {"error": "Catàleg no trobat"}, status=404)
-    
-    if tipus == "llibre" and hasattr(catalog_item, "llibre"):
-        return LlibreOut.from_orm(catalog_item.llibre)
-    else:
-        return CatalegOut.from_orm(catalog_item)
 
+    if tipus == "llibre" and hasattr(catalog_item, "llibre"):
+        cataleg_data = LlibreOut.from_orm(catalog_item.llibre)
+    else:
+        cataleg_data = CatalegOut.from_orm(catalog_item)
+
+    exemplars_qs = Exemplar.objects.filter(cataleg=catalog_item)
+    exemplars = []
+    for exemplar in exemplars_qs:
+        # Determinar el tipus del catàleg
+        if hasattr(exemplar.cataleg, "llibre"):
+            tipus = "llibre"
+        elif hasattr(exemplar.cataleg, "dispositiu"):
+            tipus = "dispositiu"
+        else:
+            tipus = "indefinit"
+
+        # Crear manualmente el objeto ExemplarOut con el campo tipus asignado
+        exemplar_out = ExemplarOut(
+            id=exemplar.id,
+            registre=exemplar.registre,
+            exclos_prestec=exemplar.exclos_prestec,
+            baixa=exemplar.baixa,
+            cataleg=cataleg_data,
+            tipus=tipus  # Asignar el valor de tipus
+        )
+        exemplars.append(exemplar_out)
+
+    return CatalogItemDetail(cataleg=cataleg_data, exemplars=exemplars)
+
+
+# Endpoint per importar usuaris des d'un fitxer CSV
 class CSVImportResult(Schema):
     created: int
     feedback: List[str]
