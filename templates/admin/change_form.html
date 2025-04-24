@@ -60,11 +60,11 @@
 
     }
 
+    const GOOGLE_API_KEY = "{{ google_api_key }}";
     function buscar_en_google_books(isbn) {
-        
         $.ajax({
             method: "GET",
-            url: "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn + "&key=AIzaSyCO4jZaGWutf5_QBVWUJlHSbIietGAXxhs",
+            url: "https://www.googleapis.com/books/v1/volumes?q=isbn:" + isbn + "&key=" + GOOGLE_API_KEY,
             dataType: "json",
         }).done(function (response) {
             if (response.totalItems === 0) {
