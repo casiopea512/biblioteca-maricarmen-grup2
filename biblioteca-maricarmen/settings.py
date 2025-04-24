@@ -132,5 +132,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-
-DATABASE_URL='mysql://usuari:contrasenya@host:port/nom_db'
