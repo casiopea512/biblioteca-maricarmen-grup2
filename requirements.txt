@@ -10,3 +10,5 @@ pydantic==2.10.6
 pydantic_core==2.27.2
 sqlparse==0.5.3
 typing_extensions==4.12.2
+tqdm==4.66.1
+faker==18.9.0
