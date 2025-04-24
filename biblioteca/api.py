@@ -5,6 +5,7 @@ from .models import *
 from typing import List, Optional, Union, Literal
 import secrets
 from ninja.files import UploadedFile
+from datetime import datetime
 import csv
 
 api = NinjaAPI()
@@ -310,3 +311,32 @@ def import_usuaris(request, file: UploadedFile):
         feedback.append(f"Línia {i}: Usuari afegit correctament")
 
     return CSVImportResult(created=created, feedback=feedback)
+
+
+# Endpoint para obtener el historial de préstamos de un usuario
+class PrestecHistory(Schema):
+    id: int
+    exemplar_title: str
+    loan_date: datetime
+    return_date: Optional[datetime]
+    notes: Optional[str]
+
+@api.get("/history", response=List[PrestecHistory], auth=AuthBearer())
+def get_user_history(request):
+    user = request.auth  # Usuario autenticado
+    if not user:
+        return {"error": "No estás autenticado"}, 401
+
+    # Obtener el historial de préstecs del usuario
+    prestecs = Prestec.objects.filter(usuari=user).select_related("exemplar__cataleg")
+    history = [
+        {
+            "id": prestec.id,
+            "exemplar_title": prestec.exemplar.cataleg.titol,
+            "loan_date": prestec.data_prestec,
+            "return_date": prestec.data_retorn,
+            "notes": prestec.anotacions,
+        }
+        for prestec in prestecs
+    ]
+    return history
