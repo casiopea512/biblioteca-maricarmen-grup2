@@ -69,6 +69,7 @@ def qui_soc(request):
         "cicle": user.cicle.nom if hasattr(user, "cicle") and user.cicle else None,
     }
 
+
 # Endpoint per actualitzar el perfil d'usuari
 class UpdateUserProfile(Schema):
     username: str
@@ -101,85 +102,147 @@ def update_profile(request, payload: UpdateUserProfile):
     return {"success": True}
 
 
+###########
+
+
 class CatalegOut(Schema):
     id: int
-    titol: str
+    titol: Optional[str]
     autor: Optional[str]
 
 class LlibreOut(CatalegOut):
     editorial: Optional[str]
     ISBN: Optional[str]
 
-class ExemplarOut(Schema):
-    id: int
-    registre: str
-    exclos_prestec: bool
-    baixa: bool
-    cataleg: Union[LlibreOut,CatalegOut]
-    tipus: str
-
-class LlibreIn(Schema):
-    titol: str
-    editorial: str
-
-
-@api.get("/llibres", response=List[LlibreOut])
-@api.get("/llibres/", response=List[LlibreOut])
-#@api.get("/llibres/", response=List[LlibreOut], auth=AuthBearer())
+@api.get("/cataleg", response=List[ CatalegOut])
+@api.get("/cataleg/", response=List[CatalegOut])
 def get_llibres(request):
-    qs = Llibre.objects.all()
-    return qs
-
-@api.post("/llibres/")
-def post_llibres(request, payload: LlibreIn):
-    llibre = Llibre.objects.create(**payload.dict())
-    return {
-        "id": llibre.id,
-        "titol": llibre.titol
-    }
-
-@api.get("/exemplars", response=List[ExemplarOut])
-@api.get("/exemplars/", response=List[ExemplarOut])
-def get_exemplars(request):
-    # carreguem objectes amb els proxy models relacionats exactes
-    exemplars = Exemplar.objects.select_related(
-        "cataleg__llibre",
-        "cataleg__revista",
-        "cataleg__cd",
-        "cataleg__dvd",
-        "cataleg__br",
-        "cataleg__dispositiu",
-    ).all()
+    qs = Cataleg.objects.all()
     result = []
-
-    for exemplar in exemplars:
-        cataleg_instance = exemplar.cataleg
-
-        # Determinar el tipus de l'objecte Cataleg
-        if hasattr(cataleg_instance, "llibre"):
-            cataleg_schema = LlibreOut.from_orm(cataleg_instance.llibre)
-            tipus = "llibre"
-        #elif hasattr(cataleg_instance, "dispositiu"):
-        #    cataleg_schema = LlibreOut.from_orm(cataleg_instance.dispositiu)
-        # TODO: afegir altres esquemes
+    for item in qs:
+        if hasattr(item, "llibre"):
+            schema = LlibreOut.from_orm(item.llibre)
         else:
-            cataleg_schema = CatalegOut.from_orm(cataleg_instance)
-            tipus = "indefinit"
+            schema = CatalegOut.from_orm(item)
 
-        # Afegir l'Exemplar amb el Cataleg serialitzat
-        result.append(
-            ExemplarOut(
-                id=exemplar.id,
-                registre=exemplar.registre,
-                exclos_prestec=exemplar.exclos_prestec,
-                baixa=exemplar.baixa,
-                cataleg=cataleg_schema,
-                tipus=tipus,
-            )
-        )
-
+        if schema.autor is None:
+            schema.autor = "No es coneix l'autor"
+        
+        result.append(schema)
     return result
 
+
+# Endpoint per obtenir detalls d'un Cataleg específic
+@api.get("/cataleg/{id}", response=dict)
+def get_cataleg(request, id: int):
+    try:
+        cataleg = Cataleg.objects.get(id=id)
+    except Cataleg.DoesNotExist:
+        return {"detail": "Catàleg no trobat"}
+    
+    # Datos comunes a todos los Cataleg
+    data = {
+        "id": cataleg.id,
+        "titol": cataleg.titol,
+        "titol_original": cataleg.titol_original,
+        "autor": cataleg.autor,
+        "CDU": cataleg.CDU,
+        "signatura": cataleg.signatura,
+        "data_edicio": cataleg.data_edicio.isoformat() if cataleg.data_edicio else None,
+        "resum": cataleg.resum,
+        "anotacions": cataleg.anotacions,
+        "mides": cataleg.mides,
+        "tags": [tag.nom for tag in cataleg.tags.all()]  # Se asume que Categoria tiene el campo 'nom'
+    }
+    
+    # Datos de la subclase específica, si aplica
+    subclass_data = {}
+    
+    if hasattr(cataleg, 'llibre'):
+        llibre = cataleg.llibre
+        subclass_data = {
+            "type": "Llibre",
+            "ISBN": llibre.ISBN,
+            "editorial": llibre.editorial,
+            "colleccio": llibre.colleccio,
+            "lloc": llibre.lloc,
+            "pais": llibre.pais.nom if llibre.pais else None,
+            "llengua": llibre.llengua.nom if llibre.llengua else None,
+            "numero": llibre.numero,
+            "volums": llibre.volums,
+            "pagines": llibre.pagines,
+            "info_url": llibre.info_url,
+            "preview_url": llibre.preview_url,
+            "thumbnail_url": llibre.thumbnail_url
+        }
+    elif hasattr(cataleg, 'revista'):
+        revista = cataleg.revista
+        subclass_data = {
+            "type": "Revista",
+            "ISSN": revista.ISSN,
+            "editorial": revista.editorial,
+            "lloc": revista.lloc,
+            "pais": revista.pais.nom if revista.pais else None,
+            "llengua": revista.llengua.nom if revista.llengua else None,
+            "numero": revista.numero,
+            "volums": revista.volums,
+            "pagines": revista.pagines
+        }
+    elif hasattr(cataleg, 'cd'):
+        cd = cataleg.cd
+        subclass_data = {
+            "type": "CD",
+            "discografica": cd.discografica,
+            "estil": cd.estil,
+            "duracio": str(cd.duracio)
+        }
+    elif hasattr(cataleg, 'dvd'):
+        dvd = cataleg.dvd
+        subclass_data = {
+            "type": "DVD",
+            "productora": dvd.productora,
+            "duracio": str(dvd.duracio)
+        }
+    elif hasattr(cataleg, 'br'):
+        br = cataleg.br
+        subclass_data = {
+            "type": "BR",
+            "productora": br.productora,
+            "duracio": str(br.duracio)
+        }
+    elif hasattr(cataleg, 'dispositiu'):
+        dispositiu = cataleg.dispositiu
+        subclass_data = {
+            "type": "Dispositiu",
+            "marca": dispositiu.marca,
+            "model": dispositiu.model
+        }
+    else:
+        subclass_data = {"type": "Cataleg"}
+    
+    data["subclass"] = subclass_data
+
+    # Incluir todos los ejemplares asociados a este Cataleg
+    exemplars = cataleg.exemplar_set.all()
+    exemplar_list = []
+    for exemplar in exemplars:
+        exemplar_list.append({
+            "id": exemplar.id,
+            "registre": exemplar.registre,
+            "exclos_prestec": exemplar.exclos_prestec,
+            "baixa": exemplar.baixa,
+            "centre": exemplar.centre.nom if exemplar.centre else "No disponible"
+        })
+    
+    data["exemplars"] = exemplar_list
+
+    return data
+
+
+###########
+
+
+# Endpoint per importar usuaris des d'un fitxer CSV
 class CSVImportResult(Schema):
     created: int
     feedback: List[str]
