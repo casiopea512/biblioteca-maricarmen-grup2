@@ -13,9 +13,5 @@ mkdir -p biblioteca/static
 cp $REACT_FOLDER/dist/index.html biblioteca/templates/index.html
 cp -r $REACT_FOLDER/dist/static biblioteca/
 
-echo "Transferint arxius d'errors al projecte Django"
-cp $REACT_FOLDER/dist/errors/404.html biblioteca/templates/404.html
-cp $REACT_FOLDER/dist/errors/403.html biblioteca/templates/403.html
-
 echo "Desplegament finalitzat."
 echo "Pots posar en marxa el servidor amb './manage.py runserver'"
