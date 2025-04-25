@@ -26,3 +26,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/", api.urls),
 ]
+
+handler404 = 'biblioteca.views.custom404'
+handler403 = 'biblioteca.views.custom403'
