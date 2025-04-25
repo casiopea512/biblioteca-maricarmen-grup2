@@ -321,22 +321,34 @@ class PrestecHistory(Schema):
     return_date: Optional[datetime]
     notes: Optional[str]
 
-@api.get("/history", response=List[PrestecHistory], auth=AuthBearer())
-def get_user_history(request):
-    user = request.auth  # Usuario autenticado
-    if not user:
-        return {"error": "No estás autenticado"}, 401
+@api.get("/history", response=List[PrestecHistory])
+def get_user_history(request, username: str, role: str):
+    try:
+        # Verificar si el usuario existe
+        user = Usuari.objects.get(username=username)
+        print(f"Usuario encontrado: {user}")
 
-    # Obtener el historial de préstecs del usuario
-    prestecs = Prestec.objects.filter(usuari=user).select_related("exemplar__cataleg")
-    history = [
-        {
-            "id": prestec.id,
-            "exemplar_title": prestec.exemplar.cataleg.titol,
-            "loan_date": prestec.data_prestec,
-            "return_date": prestec.data_retorn,
-            "notes": prestec.anotacions,
-        }
-        for prestec in prestecs
-    ]
-    return history
+        # Verificar si el rol es válido
+        if role != "normal":
+            print(f"Rol inválido: {role}")
+            return {"error": "No tienes permiso para ver este historial"}, 403
+
+        # Obtener el historial de préstecs del usuario
+        prestecs = Prestec.objects.filter(usuari=user).select_related("exemplar__cataleg")
+        print(f"Préstecs encontrados: {prestecs}")
+
+        history = [
+            {
+                "id": prestec.id,
+                "exemplar_title": prestec.exemplar.cataleg.titol,
+                "loan_date": prestec.data_prestec,
+                "return_date": prestec.data_retorn,
+                "notes": prestec.anotacions,
+            }
+            for prestec in prestecs
+        ]
+        print(f"Historial generado: {history}")
+        return history
+    except Usuari.DoesNotExist:
+        print("Usuario no encontrado")
+        return {"error": "Usuario no encontrado"}, 404
