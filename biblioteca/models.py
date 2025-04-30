@@ -133,6 +133,7 @@ class Prestec(models.Model):
     exemplar = models.ForeignKey(Exemplar, on_delete=models.CASCADE)
     data_prestec = models.DateField(auto_now_add=True)
     data_retorn = models.DateField(null=True, blank=True)
+    retornat = models.BooleanField(default=False)
     anotacions = models.TextField(blank=True,null=True)
     def __str__(self):
         return str(self.exemplar)

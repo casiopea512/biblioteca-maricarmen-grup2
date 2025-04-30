@@ -321,6 +321,34 @@ def make_borrow(request, user_id: int, exemplar_id: int):
         return JsonResponse({"error": str(e)}, status=500)
 
 
+# Endpoint para listar los préstamos de un usuario
+class PrestecOut(Schema):
+    titol: str
+    exemplar: str
+    data_prestec: str
+    data_retorn: Optional[str]
+    retornat: bool
+    anotacions: Optional[str]
+
+@api.get("/usuari/{user_id}/prestecs", response=List[PrestecOut], auth=AuthBearer())
+def llistar_prestecs(request, user_id: int):
+    prestecs = Prestec.objects.filter(usuari_id=user_id).select_related(
+        "exemplar__cataleg"
+    )
+
+    result = []
+    for p in prestecs:
+        result.append(PrestecOut(
+            titol=p.exemplar.cataleg.titol,
+            exemplar=p.exemplar.registre or "",
+            data_prestec=p.data_prestec.isoformat(),
+            data_retorn=p.data_retorn.isoformat() if p.data_retorn else None,
+            retornat=p.retornat,
+            anotacions=p.anotacions,
+        ))
+    return result
+
+
 # Endpoint per importar usuaris des d'un fitxer CSV
 class CSVImportResult(Schema):
     created: int
