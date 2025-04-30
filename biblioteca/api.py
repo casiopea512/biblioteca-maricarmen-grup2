@@ -52,7 +52,7 @@ class UserInfo(Schema):
     imatge: Optional[str]
     telefon: str
     centre: Optional[str]
-    cicle: Optional[str]
+    grup: Optional[str]
 
 @api.get("/usuari/qui-soc", response=UserInfo, auth=AuthBearer())
 def qui_soc(request):
@@ -68,7 +68,7 @@ def qui_soc(request):
         "imatge": user.imatge.url if user.imatge else None,
         "telefon": user.telefon,
         "centre": user.centre.nom if hasattr(user, "centre") and user.centre else None,
-        "cicle": user.cicle.nom if hasattr(user, "cicle") and user.cicle else None,
+        "grup": user.grup.nom if hasattr(user, "grup") and user.grup else None,
     }
 
 
@@ -80,7 +80,7 @@ class UpdateUserProfile(Schema):
     last_name: str
     telefon: str
     centre: Optional[str]  # Se espera el nom del centre
-    cicle: Optional[str]   # Se espera el nom del cicle
+    grup: Optional[str]   # Se espera el nom del grup
 
 @api.put("/usuari/actualitzar-perfil", auth=AuthBearer())
 def update_profile(request, payload: UpdateUserProfile):
@@ -95,11 +95,11 @@ def update_profile(request, payload: UpdateUserProfile):
         user.centre = centre_obj
     else:
         user.centre = None
-    if payload.cicle:
-        cicle_obj, _ = Cicle.objects.get_or_create(nom=payload.cicle)
-        user.cicle = cicle_obj
+    if payload.grup:
+        grup_obj, _ = Grup.objects.get_or_create(nom=payload.grup)
+        user.grup = grup_obj
     else:
-        user.cicle = None
+        user.grup = None
     user.save()
     return {"success": True}
 
@@ -372,7 +372,7 @@ def import_usuaris(request, file: UploadedFile):
             feedback.append(f"Línia {i}: format incorrecte (esperat 7 columnes)")
             continue
 
-        nom, cognom1, cognom2, email, telefon, centre_nom, cicle_nom = row
+        nom, cognom1, cognom2, email, telefon, centre_nom, grup_nom = row
 
         if not nom or not cognom1:
             feedback.append(f"Línia {i}: Falta nom o cognoms")
@@ -401,7 +401,7 @@ def import_usuaris(request, file: UploadedFile):
             continue
 
         centre, _ = Centre.objects.get_or_create(nom=centre_nom)
-        cicle, _ = Cicle.objects.get_or_create(nom=cicle_nom)
+        grup, _ = Grup.objects.get_or_create(nom=grup_nom)
 
         Usuari.objects.create(
             username=email,
@@ -410,7 +410,7 @@ def import_usuaris(request, file: UploadedFile):
             email=email,
             telefon=telefon,
             centre=centre,
-            cicle=cicle,
+            grup=grup,
             password=make_password('user123')
         )
         created += 1

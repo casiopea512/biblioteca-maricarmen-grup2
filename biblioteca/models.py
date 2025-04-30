@@ -105,14 +105,14 @@ class Imatge(models.Model):
 
 # Usuaris
 
-class Cicle(models.Model):
+class Grup(models.Model):
     nom = models.CharField(max_length=200)
     def __str__(self):
         return self.nom
 
 class Usuari(AbstractUser):
     centre = models.ForeignKey(Centre,on_delete=models.SET_NULL,null=True,blank=True)
-    cicle = models.ForeignKey(Cicle,on_delete=models.SET_NULL,null=True,blank=True)
+    grup = models.ForeignKey(Grup,on_delete=models.SET_NULL,null=True,blank=True)
     imatge = models.ImageField(upload_to='usuaris/',null=True,blank=True)
     auth_token = models.CharField(max_length=32,blank=True,null=True)
     telefon = models.CharField(max_length=15, null=True, blank=True)
