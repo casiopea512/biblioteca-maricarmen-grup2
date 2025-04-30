@@ -3,13 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="../styles.css">
-  <title>404 - Pàgina no trobada</title>
+  <title>Error 404 - Pàgina no trobada</title>
+
+  <script>
+    // Detectar si hay una cookie de darkMode
+    const darkModeCookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('darkMode='));
+    if (darkModeCookie) {
+      const darkMode = darkModeCookie.split('=')[1] === 'true';
+      if (darkMode) {
+        document.documentElement.classList.add('dark-mode');
+      }
+    } else {
+      const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDarkMode) {
+        document.documentElement.classList.add('dark-mode');
+      }
+    }
+  </script>
+
+  <style>
+    /*****************************************
+    MARK: General
+    ******************************************/
+
+    :root{
+      --strongBlue: #214093ff;
+      --mediumBlue: #5C74B0ff;
+      --lightBlue: #90A2C7ff;
+      --babyBlue: #DDE1F1ff;
+      --white: #FFFFFFff;
+      --black: #202020;
+      --strongGrey: #4b4a4a;
+      --lightGrey: #a3a3a3;
+      --titelFont: "PlusJakartaSans";
+    }
+
+    *{
+      font-family: Arial;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1, h2{
+      margin: 0;
+    }
+
+    /*****************************************
+    MARK: Error Styles
+    ******************************************/
+
+    body.error-page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      background-color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    body.error-page h1{
+      font-size: 4rem;
+      color: var(--strongBlue);
+    }
+    
+    body.error-page h2{
+      font-size: 3rem;
+      color: var(--strongBlue);
+    }
+    
+    body.error-page div{
+      margin: 2rem 0rem;
+      color: var(--strongGrey);
+    }
+    
+    body.error-page p{
+      margin: 5px 0px;
+    }
+    
+    body.error-page p, body.error-page a{
+      font-size: 1.5rem;
+    }
+    
+    body.error-page p.errorCopy{
+      color: var(--lightGrey);
+    }
+    
+    body.error-page a{
+      margin-top: 10px;
+      color: var(--strongBlue);
+      text-decoration: underline;
+    }
+    
+    body.error-page a:hover{
+      color: var(--mediumBlue);
+    }
+
+    /*****************************************
+    MARK: Dark Mode
+    ******************************************/
+
+    html.dark-mode body.error-page{
+      background-color: var(--black);
+      color: var(--lightGrey);
+    }
+    
+    html.dark-mode body.error-page h1, html.dark-mode body.error-page h2{
+      color: var(--lightBlue);
+    }
+    
+    html.dark-mode body.error-page div{
+      color: var(--lightGrey);
+    }
+    
+    html.dark-mode body.error-page a{
+      color: var(--mediumBlue);
+    }
+    
+    html.dark-mode body.error-page a:hover{
+      color: var(--babyBlue);
+    }
+  </style>
+
 </head>
+
 <body class="error-page">
-  <div class="container">
-    <h1>404</h1>
-    <p>Ho sentim, però la pàgina que estàs buscant no existeix</p>
+  <h1>Biblioteca Maricarmen Brito</h1>
+  <h2>Error 404 - Pàgina no trobada</h2>
+  <div>
+    <p>Ho sentim, però la pàgina que estàs intentant accedir no està disponible.</p>
+    <p>Això pot ser degut a un error en l'adreça introduïda o perquè la pàgina ha estat eliminada o traslladada.</p>
+    <p>Si necessites ajuda, no dubtis a posar-te en contacte amb nosaltres</p>
+    <p>Mòbil: 93 377 11 00</p>
+    <p>Correu electrònic: <a href="mailto:a8016781@xtec.cat">a8016781@xtec.cat</a></p>
   </div>
+  <a href="https://biblioteca2.ieti.site/">Torna a la pàgina principal</a>
+  <p class="errorCopy">&copy; 2025 Biblioteca Maricarmen Brito. Tots els drets reservats.</p>
+  <footer>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-RPC98E93BV"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-RPC98E93BV');
+    </script>
+  </footer>
 </body>
+
 </html>
