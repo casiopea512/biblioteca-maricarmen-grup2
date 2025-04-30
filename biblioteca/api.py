@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate
+from django.utils import timezone
+from django.http import JsonResponse
 from ninja import NinjaAPI, Schema
 from ninja.security import HttpBasicAuth, HttpBearer
 from .models import *
@@ -50,7 +52,7 @@ class UserInfo(Schema):
     imatge: Optional[str]
     telefon: str
     centre: Optional[str]
-    cicle: Optional[str]
+    grup: Optional[str]
 
 @api.get("/usuari/qui-soc", response=UserInfo, auth=AuthBearer())
 def qui_soc(request):
@@ -66,8 +68,9 @@ def qui_soc(request):
         "imatge": user.imatge.url if user.imatge else None,
         "telefon": user.telefon,
         "centre": user.centre.nom if hasattr(user, "centre") and user.centre else None,
-        "cicle": user.cicle.nom if hasattr(user, "cicle") and user.cicle else None,
+        "grup": user.grup.nom if hasattr(user, "grup") and user.grup else None,
     }
+
 
 # Endpoint per actualitzar el perfil d'usuari
 class UpdateUserProfile(Schema):
@@ -77,7 +80,7 @@ class UpdateUserProfile(Schema):
     last_name: str
     telefon: str
     centre: Optional[str]  # Se espera el nom del centre
-    cicle: Optional[str]   # Se espera el nom del cicle
+    grup: Optional[str]   # Se espera el nom del grup
 
 @api.put("/usuari/actualitzar-perfil", auth=AuthBearer())
 def update_profile(request, payload: UpdateUserProfile):
@@ -92,94 +95,261 @@ def update_profile(request, payload: UpdateUserProfile):
         user.centre = centre_obj
     else:
         user.centre = None
-    if payload.cicle:
-        cicle_obj, _ = Cicle.objects.get_or_create(nom=payload.cicle)
-        user.cicle = cicle_obj
+    if payload.grup:
+        grup_obj, _ = Grup.objects.get_or_create(nom=payload.grup)
+        user.grup = grup_obj
     else:
-        user.cicle = None
+        user.grup = None
     user.save()
     return {"success": True}
 
 
+###########
+
+
 class CatalegOut(Schema):
     id: int
-    titol: str
+    titol: Optional[str]
     autor: Optional[str]
 
 class LlibreOut(CatalegOut):
     editorial: Optional[str]
     ISBN: Optional[str]
 
-class ExemplarOut(Schema):
-    id: int
-    registre: str
-    exclos_prestec: bool
-    baixa: bool
-    cataleg: Union[LlibreOut,CatalegOut]
-    tipus: str
-
-class LlibreIn(Schema):
-    titol: str
-    editorial: str
-
-
-@api.get("/llibres", response=List[LlibreOut])
-@api.get("/llibres/", response=List[LlibreOut])
-#@api.get("/llibres/", response=List[LlibreOut], auth=AuthBearer())
+@api.get("/cataleg", response=List[ CatalegOut])
+@api.get("/cataleg/", response=List[CatalegOut])
 def get_llibres(request):
-    qs = Llibre.objects.all()
-    return qs
-
-@api.post("/llibres/")
-def post_llibres(request, payload: LlibreIn):
-    llibre = Llibre.objects.create(**payload.dict())
-    return {
-        "id": llibre.id,
-        "titol": llibre.titol
-    }
-
-@api.get("/exemplars", response=List[ExemplarOut])
-@api.get("/exemplars/", response=List[ExemplarOut])
-def get_exemplars(request):
-    # carreguem objectes amb els proxy models relacionats exactes
-    exemplars = Exemplar.objects.select_related(
-        "cataleg__llibre",
-        "cataleg__revista",
-        "cataleg__cd",
-        "cataleg__dvd",
-        "cataleg__br",
-        "cataleg__dispositiu",
-    ).all()
+    qs = Cataleg.objects.all()
     result = []
-
-    for exemplar in exemplars:
-        cataleg_instance = exemplar.cataleg
-
-        # Determinar el tipus de l'objecte Cataleg
-        if hasattr(cataleg_instance, "llibre"):
-            cataleg_schema = LlibreOut.from_orm(cataleg_instance.llibre)
-            tipus = "llibre"
-        #elif hasattr(cataleg_instance, "dispositiu"):
-        #    cataleg_schema = LlibreOut.from_orm(cataleg_instance.dispositiu)
-        # TODO: afegir altres esquemes
+    for item in qs:
+        if hasattr(item, "llibre"):
+            schema = LlibreOut.from_orm(item.llibre)
         else:
-            cataleg_schema = CatalegOut.from_orm(cataleg_instance)
-            tipus = "indefinit"
+            schema = CatalegOut.from_orm(item)
 
-        # Afegir l'Exemplar amb el Cataleg serialitzat
-        result.append(
-            ExemplarOut(
-                id=exemplar.id,
-                registre=exemplar.registre,
-                exclos_prestec=exemplar.exclos_prestec,
-                baixa=exemplar.baixa,
-                cataleg=cataleg_schema,
-                tipus=tipus,
-            )
-        )
-
+        if schema.autor is None:
+            schema.autor = "No es coneix l'autor"
+        
+        result.append(schema)
     return result
 
+
+# Endpoint per obtenir detalls d'un Cataleg específic
+@api.get("/cataleg/{id}", response=dict)
+def get_cataleg(request, id: int):
+    try:
+        cataleg = Cataleg.objects.get(id=id)
+    except Cataleg.DoesNotExist:
+        return {"detail": "Catàleg no trobat"}
+    
+    # Datos comunes a todos los Cataleg
+    data = {
+        "id": cataleg.id,
+        "titol": cataleg.titol,
+        "titol_original": cataleg.titol_original,
+        "autor": cataleg.autor,
+        "CDU": cataleg.CDU,
+        "signatura": cataleg.signatura,
+        "data_edicio": cataleg.data_edicio.isoformat() if cataleg.data_edicio else None,
+        "resum": cataleg.resum,
+        "anotacions": cataleg.anotacions,
+        "mides": cataleg.mides,
+        "tags": [tag.nom for tag in cataleg.tags.all()]  # Se asume que Categoria tiene el campo 'nom'
+    }
+    
+    # Datos de la subclase específica, si aplica
+    subclass_data = {}
+    
+    if hasattr(cataleg, 'llibre'):
+        llibre = cataleg.llibre
+        subclass_data = {
+            "type": "Llibre",
+            "ISBN": llibre.ISBN,
+            "editorial": llibre.editorial,
+            "colleccio": llibre.colleccio,
+            "lloc": llibre.lloc,
+            "pais": llibre.pais.nom if llibre.pais else None,
+            "llengua": llibre.llengua.nom if llibre.llengua else None,
+            "numero": llibre.numero,
+            "volums": llibre.volums,
+            "pagines": llibre.pagines,
+            "info_url": llibre.info_url,
+            "preview_url": llibre.preview_url,
+            "thumbnail_url": llibre.thumbnail_url
+        }
+    elif hasattr(cataleg, 'revista'):
+        revista = cataleg.revista
+        subclass_data = {
+            "type": "Revista",
+            "ISSN": revista.ISSN,
+            "editorial": revista.editorial,
+            "lloc": revista.lloc,
+            "pais": revista.pais.nom if revista.pais else None,
+            "llengua": revista.llengua.nom if revista.llengua else None,
+            "numero": revista.numero,
+            "volums": revista.volums,
+            "pagines": revista.pagines
+        }
+    elif hasattr(cataleg, 'cd'):
+        cd = cataleg.cd
+        subclass_data = {
+            "type": "CD",
+            "discografica": cd.discografica,
+            "estil": cd.estil,
+            "duracio": str(cd.duracio)
+        }
+    elif hasattr(cataleg, 'dvd'):
+        dvd = cataleg.dvd
+        subclass_data = {
+            "type": "DVD",
+            "productora": dvd.productora,
+            "duracio": str(dvd.duracio)
+        }
+    elif hasattr(cataleg, 'br'):
+        br = cataleg.br
+        subclass_data = {
+            "type": "BR",
+            "productora": br.productora,
+            "duracio": str(br.duracio)
+        }
+    elif hasattr(cataleg, 'dispositiu'):
+        dispositiu = cataleg.dispositiu
+        subclass_data = {
+            "type": "Dispositiu",
+            "marca": dispositiu.marca,
+            "model": dispositiu.model
+        }
+    else:
+        subclass_data = {"type": "Cataleg"}
+    
+    data["subclass"] = subclass_data
+
+    # Incluir todos los ejemplares asociados a este Cataleg
+    exemplars = cataleg.exemplar_set.all()
+    exemplar_list = []
+    for exemplar in exemplars:
+        exemplar_list.append({
+            "id": exemplar.id,
+            "registre": exemplar.registre,
+            "exclos_prestec": exemplar.exclos_prestec,
+            "baixa": exemplar.baixa,
+            "centre": exemplar.centre.nom if exemplar.centre else "No disponible"
+        })
+    
+    data["exemplars"] = exemplar_list
+
+    return data
+
+
+###########
+
+
+#Endpoint per obtenir la llista d'usuaris
+class UserSearchOut(Schema):
+    id: int
+    username: str
+    first_name: str
+    last_name: str
+    email: str
+    telefon : int
+
+@api.get("/users/{userInfoSearch}", response=List[UserSearchOut])
+def search_users(request, userInfoSearch: str):
+    users = Usuari.objects.filter(
+        models.Q(username__icontains=userInfoSearch) | 
+        models.Q(first_name__icontains=userInfoSearch) | 
+        models.Q(last_name__icontains=userInfoSearch) |
+        models.Q(email=userInfoSearch) |
+        models.Q(telefon__icontains=userInfoSearch)
+    )
+    return [
+        UserSearchOut(
+            id=user.id,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            email=user.email,
+            telefon=user.telefon
+        )
+        for user in users
+    ]
+
+# Endpoint para efectuar un préstamo
+from datetime import timedelta
+
+# Endpoint para efectuar un préstamo
+@api.post("/makeBorrow/{user_id}/{exemplar_id}", auth=AuthBearer())
+def make_borrow(request, user_id: int, exemplar_id: int):
+    try:
+        # Obtener el usuario autenticado 
+        librarian = request.auth 
+
+        # Obtener el usuario por ID
+        student = Usuari.objects.get(id=user_id)
+
+        # Obtener el ejemplar por ID
+        exemplar = Exemplar.objects.get(id=exemplar_id)
+
+        # Verificar si el ejemplar está disponible para préstamo
+        if exemplar.exclos_prestec or exemplar.baixa:
+            return JsonResponse({"error": "El ejemplar no está disponible para préstamo."}, status=400)
+
+        # Calcular la fecha devolución (1s)
+        data_prestec = now()
+        data_retorn = data_prestec + timedelta(weeks=1)
+
+        # Realizar el préstamo
+        prestec = Prestec.objects.create(
+            usuari=student,          # Estudiante al que se le hace el préstamo
+            exemplar=exemplar,       # Ejemplar que se presta
+            data_prestec=data_prestec,  # Fecha actual del préstamo
+            data_retorn=data_retorn,    # Fecha de retodevoluciónrno
+        )
+
+        # Marcar el ejemplar como prestado
+        exemplar.exclos_prestec = True
+        exemplar.save()
+
+        # Devolver la respuesta
+        return JsonResponse({"message": "Préstamo realizado con éxito.", "prestamo_id": prestec.id}, status=200)
+
+    except Usuari.DoesNotExist:
+        return JsonResponse({"error": "Usuario no encontrado."}, status=404)
+    except Exemplar.DoesNotExist:
+        return JsonResponse({"error": "Ejemplar no encontrado."}, status=404)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# Endpoint para listar los préstamos de un usuario
+class PrestecOut(Schema):
+    titol: str
+    exemplar: str
+    data_prestec: str
+    data_retorn: Optional[str]
+    retornat: bool
+    anotacions: Optional[str]
+
+@api.get("/usuari/{user_id}/prestecs", response=List[PrestecOut], auth=AuthBearer())
+def llistar_prestecs(request, user_id: int):
+    prestecs = Prestec.objects.filter(usuari_id=user_id).select_related(
+        "exemplar__cataleg"
+    )
+
+    result = []
+    for p in prestecs:
+        result.append(PrestecOut(
+            titol=p.exemplar.cataleg.titol,
+            exemplar=p.exemplar.registre or "",
+            data_prestec=p.data_prestec.isoformat(),
+            data_retorn=p.data_retorn.isoformat() if p.data_retorn else None,
+            retornat=p.retornat,
+            anotacions=p.anotacions,
+        ))
+    return result
+
+
+# Endpoint per importar usuaris des d'un fitxer CSV
 class CSVImportResult(Schema):
     created: int
     feedback: List[str]
@@ -202,7 +372,7 @@ def import_usuaris(request, file: UploadedFile):
             feedback.append(f"Línia {i}: format incorrecte (esperat 7 columnes)")
             continue
 
-        nom, cognom1, cognom2, email, telefon, centre_nom, cicle_nom = row
+        nom, cognom1, cognom2, email, telefon, centre_nom, grup_nom = row
 
         if not nom or not cognom1:
             feedback.append(f"Línia {i}: Falta nom o cognoms")
@@ -231,7 +401,7 @@ def import_usuaris(request, file: UploadedFile):
             continue
 
         centre, _ = Centre.objects.get_or_create(nom=centre_nom)
-        cicle, _ = Cicle.objects.get_or_create(nom=cicle_nom)
+        grup, _ = Grup.objects.get_or_create(nom=grup_nom)
 
         Usuari.objects.create(
             username=email,
@@ -240,7 +410,7 @@ def import_usuaris(request, file: UploadedFile):
             email=email,
             telefon=telefon,
             centre=centre,
-            cicle=cicle,
+            grup=grup,
             password=make_password('user123')
         )
         created += 1

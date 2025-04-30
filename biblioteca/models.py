@@ -3,6 +3,10 @@ from django.contrib.auth.models import AbstractUser
 from django.utils.timezone import now
 from django.contrib.auth.hashers import make_password
 
+class Centre(models.Model):
+    nom = models.CharField(max_length=200)
+    def __str__(self):
+        return self.nom
 
 class Categoria(models.Model):
     class Meta:
@@ -88,8 +92,9 @@ class Dispositiu(Cataleg):
 class Exemplar(models.Model):
     cataleg = models.ForeignKey(Cataleg, on_delete=models.CASCADE)
     registre = models.CharField(max_length=100,null=True,blank=True)
-    exclos_prestec = models.BooleanField(default=True)
+    exclos_prestec = models.BooleanField(default=False)
     baixa = models.BooleanField(default=False)
+    centre = models.ForeignKey(Centre, on_delete=models.SET_NULL, null=True, blank=True)
     def __str__(self):
         return "REG:{} - {}".format(self.registre,self.cataleg.titol)
 
@@ -100,19 +105,14 @@ class Imatge(models.Model):
 
 # Usuaris
 
-class Centre(models.Model):
-    nom = models.CharField(max_length=200)
-    def __str__(self):
-        return self.nom
-
-class Cicle(models.Model):
+class Grup(models.Model):
     nom = models.CharField(max_length=200)
     def __str__(self):
         return self.nom
 
 class Usuari(AbstractUser):
     centre = models.ForeignKey(Centre,on_delete=models.SET_NULL,null=True,blank=True)
-    cicle = models.ForeignKey(Cicle,on_delete=models.SET_NULL,null=True,blank=True)
+    grup = models.ForeignKey(Grup,on_delete=models.SET_NULL,null=True,blank=True)
     imatge = models.ImageField(upload_to='usuaris/',null=True,blank=True)
     auth_token = models.CharField(max_length=32,blank=True,null=True)
     telefon = models.CharField(max_length=15, null=True, blank=True)
@@ -133,6 +133,7 @@ class Prestec(models.Model):
     exemplar = models.ForeignKey(Exemplar, on_delete=models.CASCADE)
     data_prestec = models.DateField(auto_now_add=True)
     data_retorn = models.DateField(null=True, blank=True)
+    retornat = models.BooleanField(default=False)
     anotacions = models.TextField(blank=True,null=True)
     def __str__(self):
         return str(self.exemplar)
