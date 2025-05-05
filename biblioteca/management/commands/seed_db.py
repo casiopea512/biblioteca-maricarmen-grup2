@@ -7,7 +7,7 @@ from tqdm import tqdm
 from biblioteca.models import (
     Pais, Llengua, Categoria, 
     Llibre, Revista, CD, DVD, BR, Dispositiu, 
-    Exemplar, Centre, Grup, Usuari, Prestec, Reserva
+    Exemplar, Centre, Cicle, Usuari, Prestec, Reserva
 )
 
 class Command(BaseCommand):
@@ -442,7 +442,7 @@ class Command(BaseCommand):
     def _create_users(self, fake, count):
         with tqdm(total=count, desc="Creating users") as pbar:
             centre, _ = Centre.objects.get_or_create(nom='Institut Esteve Terrades i Illa')
-            grup, _ = Grup.objects.get_or_create(nom='AWS2')
+            cicle, _ = Cicle.objects.get_or_create(nom='AWS2')
             
             for _ in range(count):
                 first_name = fake.first_name()
@@ -457,7 +457,7 @@ class Command(BaseCommand):
                     last_name=last_name,
                     is_active=True,
                     centre=centre,
-                    grup=grup,
+                    cicle=cicle,
                     telefon=f"6{random.randint(10000000, 99999999)}"
                 )
                 user.set_password('contrasenya')  # Set a default password
