@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.html import escape, mark_safe
 from django.forms.models import BaseInlineFormSet
 from django import forms
+from django.contrib.auth.models import Group
 
 from .models import *
 
@@ -55,7 +56,7 @@ class CustomExemplarsInline(admin.TabularInline):
     extra = 1
     formset = ExemplarInlineFormSet
     readonly_fields = ('pk',)
-    fields = ('pk', 'registre', 'exclos_prestec', 'baixa')
+    fields = ('pk', 'registre', 'exclos_prestec', 'baixa', 'centre')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -123,18 +124,15 @@ class PrestecAdmin(admin.ModelAdmin):
     list_display = ('exemplar', 'usuari', 'data_prestec', 'data_retorn')
 
     def get_queryset(self, request):
-        # Obtén el queryset base
         qs = super().get_queryset(request)
 
-        # Si el usuario es superusuario, puede ver todos los préstecs
         if request.user.is_superuser:
             return qs
 
-        # Si el usuario tiene un centro asignado, filtra por ese centro
-        if request.user.centre:
-            return qs.filter(exemplar__centre=request.user.centre)
+        if request.user.groups.filter(name="bibliotecario").exists():
+            if request.user.centre:
+                return qs.filter(exemplar__centre=request.user.centre)
 
-        # Si el usuario no tiene un centro asignado, no puede ver ningún préstec
         return qs.none()
 
 admin.site.register(Centre)
