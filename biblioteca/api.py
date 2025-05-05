@@ -327,6 +327,7 @@ class PrestecOut(Schema):
     exemplar: str
     data_prestec: str
     data_retorn: Optional[str]
+    data_retornat: Optional[str]
     retornat: bool
     anotacions: Optional[str]
 
@@ -343,6 +344,7 @@ def llistar_prestecs(request, user_id: int):
             exemplar=p.exemplar.registre or "",
             data_prestec=p.data_prestec.isoformat(),
             data_retorn=p.data_retorn.isoformat() if p.data_retorn else None,
+            data_retornat=p.data_retornat.isoformat() if p.data_retornat else None,
             retornat=p.retornat,
             anotacions=p.anotacions,
         ))
