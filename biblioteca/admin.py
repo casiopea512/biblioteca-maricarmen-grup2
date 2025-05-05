@@ -55,7 +55,7 @@ class CustomExemplarsInline(admin.TabularInline):
     extra = 1
     formset = ExemplarInlineFormSet
     readonly_fields = ('pk',)
-    fields = ('pk', 'registre', 'exclos_prestec', 'baixa')
+    fields = ('pk', 'registre', 'exclos_prestec', 'baixa', 'centre')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -119,8 +119,8 @@ admin.site.register(Imatge)
 
 class PrestecAdmin(admin.ModelAdmin):
     readonly_fields = ('data_prestec',)
-    fields = ('exemplar', 'usuari', 'data_prestec', 'data_retorn', 'anotacions')
-    list_display = ('exemplar', 'usuari', 'data_prestec', 'data_retorn')
+    fields = ('exemplar', 'usuari', 'data_prestec', 'data_retorn', 'data_retornat', 'retornat', 'anotacions')
+    list_display = ('exemplar', 'usuari', 'data_prestec', 'data_retorn', 'data_retornat', 'retornat')
 
 admin.site.register(Centre)
 admin.site.register(Grup)

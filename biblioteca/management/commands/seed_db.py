@@ -427,6 +427,7 @@ class Command(BaseCommand):
 
     def _create_exemplars(self, cataleg_item, count):
         """Create a specific number of exemplars (copies) for a catalog item"""
+        centre, _ = Centre.objects.get_or_create(nom='Institut Esteve Terrades i Illa')
         for i in range(count):
             # Some random variation in exemplar status
             exclos_prestec = random.random() < 0.2  # 20% excluded from loans
@@ -436,7 +437,8 @@ class Command(BaseCommand):
                 cataleg=cataleg_item,
                 registre=f"{cataleg_item.signatura}-{i+1}",
                 exclos_prestec=exclos_prestec,
-                baixa=baixa
+                baixa=baixa,
+                centre=centre
             )
 
     def _create_users(self, fake, count):
