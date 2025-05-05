@@ -122,6 +122,21 @@ class PrestecAdmin(admin.ModelAdmin):
     fields = ('exemplar', 'usuari', 'data_prestec', 'data_retorn', 'anotacions')
     list_display = ('exemplar', 'usuari', 'data_prestec', 'data_retorn')
 
+    def get_queryset(self, request):
+        # Obtén el queryset base
+        qs = super().get_queryset(request)
+
+        # Si el usuario es superusuario, puede ver todos los préstecs
+        if request.user.is_superuser:
+            return qs
+
+        # Si el usuario tiene un centro asignado, filtra por ese centro
+        if request.user.centre:
+            return qs.filter(exemplar__centre=request.user.centre)
+
+        # Si el usuario no tiene un centro asignado, no puede ver ningún préstec
+        return qs.none()
+
 admin.site.register(Centre)
 admin.site.register(Grup)
 admin.site.register(Reserva)
