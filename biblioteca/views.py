@@ -10,3 +10,8 @@ def index(response):
     except TemplateDoesNotExist:
         return HttpResponse("Backend OK. Posa en marxa el frontend seguint el README.")
 
+def custom404(request, exception=None):
+    return render(request, '404.html', status=404)
+
+def custom403(request, exception=None):
+    return render(request, '403.html', status=403)
