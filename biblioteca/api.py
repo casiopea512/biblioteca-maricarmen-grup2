@@ -111,12 +111,16 @@ class CatalegOut(Schema):
     id: int
     titol: Optional[str]
     autor: Optional[str]
+    disponibles: Optional[int] = 0
+    no_disponibles: Optional[int] = 0
+    excluits: Optional[int] = 0 
+    de_baixa: Optional[int] = 0 
 
 class LlibreOut(CatalegOut):
     editorial: Optional[str]
     ISBN: Optional[str]
 
-@api.get("/cataleg", response=List[ CatalegOut])
+@api.get("/cataleg", response=List[CatalegOut])
 @api.get("/cataleg/", response=List[CatalegOut])
 def get_llibres(request):
     qs = Cataleg.objects.all()
@@ -130,6 +134,20 @@ def get_llibres(request):
         if schema.autor is None:
             schema.autor = "No es coneix l'autor"
         
+        # Calcular els exemplars associats al catàleg
+        total = item.exemplar_set.count()
+        
+        excluits = item.exemplar_set.filter(exclos_prestec=True).count()
+        de_baixa = item.exemplar_set.filter(baixa=True).count()
+        
+        disponibles = total - excluits - de_baixa
+        no_disponibles = excluits + de_baixa
+
+        schema.disponibles = disponibles
+        schema.no_disponibles = no_disponibles
+        schema.excluits = excluits
+        schema.de_baixa = de_baixa
+
         result.append(schema)
     return result
 
