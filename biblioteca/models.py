@@ -95,6 +95,7 @@ class Exemplar(models.Model):
     codi = models.CharField(max_length=20, unique=True, blank=True, null=True)
     exclos_prestec = models.BooleanField(default=False)
     baixa = models.BooleanField(default=False)
+    en_prestec = models.BooleanField(default=False)
     centre = models.ForeignKey(Centre, on_delete=models.SET_NULL, null=True, blank=True)
 
     def save(self, *args, **kwargs):
@@ -103,7 +104,6 @@ class Exemplar(models.Model):
             num_exemplars = Exemplar.objects.filter(codi__startswith=f"EX-{any_actual}").count() + 1
             self.codi = f"EX-{any_actual}-{num_exemplars:06d}"
         super().save(*args, **kwargs)
-
     def __str__(self):
         return f"REG:{self.registre} - {self.cataleg.titol} - {self.codi}"
 
@@ -142,6 +142,7 @@ class Prestec(models.Model):
     exemplar = models.ForeignKey(Exemplar, on_delete=models.CASCADE)
     data_prestec = models.DateField(auto_now_add=True)
     data_retorn = models.DateField(null=True, blank=True)
+    data_retornat = models.DateField(null=True, blank=True)
     retornat = models.BooleanField(default=False)
     anotacions = models.TextField(blank=True,null=True)
     def __str__(self):
