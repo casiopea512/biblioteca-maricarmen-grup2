@@ -55,8 +55,8 @@ class CustomExemplarsInline(admin.TabularInline):
     model = Exemplar
     extra = 1
     formset = ExemplarInlineFormSet
-    readonly_fields = ('pk',)
-    fields = ('pk', 'registre', 'exclos_prestec', 'baixa', 'centre')
+    readonly_fields = ('pk', 'codi')  # Mostrar el codi como solo lectura
+    fields = ('pk', 'codi', 'registre', 'exclos_prestec', 'baixa', 'centre')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -84,23 +84,6 @@ class LlibreAdmin(admin.ModelAdmin):
 
     def thumb(self, obj):
         return mark_safe(f"<img src='{escape(obj.thumbnail_url)}' />")
-
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_staff
-
-    def formfield_for_dbfield(self, db_field, request, **kwargs):
-        field = super().formfield_for_dbfield(db_field, request, **kwargs)
-        if db_field.name in ('autor', 'editorial'):
-            # Cambiar Cataleg.objects por Llibre.objects
-            qs = Llibre.objects.exclude(**{f"{db_field.name}__isnull": True}) \
-                        .exclude(**{f"{db_field.name}": ""})
-            opts = list(qs.values_list(db_field.name, flat=True)
-                            .distinct().order_by(db_field.name))
-            field.widget = DatalistTextInput(
-                datalist_id=f'datalist_{db_field.name}',
-                options=opts,
-            )
-        return field
 
 
 # Registre d'admins
