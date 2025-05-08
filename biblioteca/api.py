@@ -114,7 +114,7 @@ class CatalegOut(Schema):
     disponibles: Optional[int] = 0
     no_disponibles: Optional[int] = 0
     excluits: Optional[int] = 0 
-    de_baixa: Optional[int] = 0 
+    de_prestec: Optional[int] = 0 
 
 class LlibreOut(CatalegOut):
     editorial: Optional[str]
@@ -138,15 +138,15 @@ def get_llibres(request):
         total = item.exemplar_set.count()
         
         excluits = item.exemplar_set.filter(exclos_prestec=True).count()
-        de_baixa = item.exemplar_set.filter(baixa=True).count()
+        de_prestec = item.exemplar_set.filter(en_prestec=True).count()
         
-        disponibles = total - excluits - de_baixa
-        no_disponibles = excluits + de_baixa
+        disponibles = total - excluits - de_prestec
+        no_disponibles = excluits + de_prestec
 
         schema.disponibles = disponibles
         schema.no_disponibles = no_disponibles
         schema.excluits = excluits
-        schema.de_baixa = de_baixa
+        schema.de_prestec = de_prestec
 
         result.append(schema)
     return result
@@ -250,7 +250,7 @@ def get_cataleg(request, id: int):
             "id": exemplar.id,
             "registre": exemplar.registre,
             "exclos_prestec": exemplar.exclos_prestec,
-            "baixa": exemplar.baixa,
+            "en_prestec": exemplar.en_prestec,
             "centre": exemplar.centre.nom if exemplar.centre else "No disponible"
         })
     
@@ -325,7 +325,7 @@ def make_borrow(request, user_id: int, exemplar_id: int):
         )
 
         # Marcar el ejemplar como prestado
-        exemplar.exclos_prestec = True
+        exemplar.en_prestec = True
         exemplar.save()
 
         # Devolver la respuesta
