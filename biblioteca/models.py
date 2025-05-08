@@ -91,21 +91,23 @@ class Dispositiu(Cataleg):
 
 class Exemplar(models.Model):
     cataleg = models.ForeignKey(Cataleg, on_delete=models.CASCADE)
-    registre = models.CharField(max_length=100,null=True,blank=True)
-    codi = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    registre = models.CharField(max_length=100, null=True, blank=True)
     exclos_prestec = models.BooleanField(default=False)
     baixa = models.BooleanField(default=False)
     en_prestec = models.BooleanField(default=False)
     centre = models.ForeignKey(Centre, on_delete=models.SET_NULL, null=True, blank=True)
 
     def save(self, *args, **kwargs):
-        if not self.codi:
+        if not self.registre:
+            # Generar el registre único
             any_actual = now().year
-            num_exemplars = Exemplar.objects.filter(codi__startswith=f"EX-{any_actual}").count() + 1
-            self.codi = f"EX-{any_actual}-{num_exemplars:06d}"
+            num_exemplars = Exemplar.objects.filter(registre__startswith=f"EX-{any_actual}").count() + 1
+            self.registre = f"EX-{any_actual}-{num_exemplars:06d}"
+
         super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"REG:{self.registre} - {self.cataleg.titol} - {self.codi}"
+        return f"REG:{self.registre} - {self.cataleg.titol}"
 
 class Imatge(models.Model):
     cataleg = models.ForeignKey(Cataleg, on_delete=models.CASCADE)
