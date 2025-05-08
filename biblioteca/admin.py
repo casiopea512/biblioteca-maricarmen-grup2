@@ -55,8 +55,8 @@ class CustomExemplarsInline(admin.TabularInline):
     model = Exemplar
     extra = 1
     formset = ExemplarInlineFormSet
-    readonly_fields = ('pk', 'codi')  # Mostrar el codi como solo lectura
-    fields = ('pk', 'codi', 'registre', 'exclos_prestec', 'baixa', 'centre')
+    readonly_fields = ('pk', 'registre')  # Mostrar el codi como solo lectura
+    fields = ('pk', 'registre', 'exclos_prestec', 'baixa', 'centre')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
