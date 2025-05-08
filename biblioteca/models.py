@@ -94,7 +94,9 @@ class Exemplar(models.Model):
     registre = models.CharField(max_length=100,null=True,blank=True)
     exclos_prestec = models.BooleanField(default=False)
     baixa = models.BooleanField(default=False)
+    en_prestec = models.BooleanField(default=False)
     centre = models.ForeignKey(Centre, on_delete=models.SET_NULL, null=True, blank=True)
+    biblioteca = models.CharField(max_length=100, blank=True, null=True)
     def __str__(self):
         return "REG:{} - {}".format(self.registre,self.cataleg.titol)
 
