@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.html import escape, mark_safe
 from django.forms.models import BaseInlineFormSet
 from django import forms
+from django.contrib.auth.models import Group
 
 from .models import *
 
@@ -54,8 +55,8 @@ class CustomExemplarsInline(admin.TabularInline):
     model = Exemplar
     extra = 1
     formset = ExemplarInlineFormSet
-    readonly_fields = ('pk',)
-    fields = ('pk', 'registre', 'exclos_prestec', 'baixa')
+    readonly_fields = ('pk', 'registre')  # Mostrar el codi como solo lectura
+    fields = ('pk', 'registre', 'exclos_prestec', 'baixa', 'centre')
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -84,23 +85,6 @@ class LlibreAdmin(admin.ModelAdmin):
     def thumb(self, obj):
         return mark_safe(f"<img src='{escape(obj.thumbnail_url)}' />")
 
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_staff
-
-    def formfield_for_dbfield(self, db_field, request, **kwargs):
-        field = super().formfield_for_dbfield(db_field, request, **kwargs)
-        if db_field.name in ('autor', 'editorial'):
-            # Cambiar Cataleg.objects por Llibre.objects
-            qs = Llibre.objects.exclude(**{f"{db_field.name}__isnull": True}) \
-                        .exclude(**{f"{db_field.name}": ""})
-            opts = list(qs.values_list(db_field.name, flat=True)
-                            .distinct().order_by(db_field.name))
-            field.widget = DatalistTextInput(
-                datalist_id=f'datalist_{db_field.name}',
-                options=opts,
-            )
-        return field
-
 
 # Registre d'admins
 admin.site.register(Usuari, UsuariAdmin)
@@ -119,8 +103,20 @@ admin.site.register(Imatge)
 
 class PrestecAdmin(admin.ModelAdmin):
     readonly_fields = ('data_prestec',)
-    fields = ('exemplar', 'usuari', 'data_prestec', 'data_retorn', 'anotacions')
-    list_display = ('exemplar', 'usuari', 'data_prestec', 'data_retorn')
+    fields = ('exemplar', 'usuari', 'data_prestec', 'data_retorn', 'data_retornat', 'retornat', 'anotacions')
+    list_display = ('exemplar', 'usuari', 'data_prestec', 'data_retorn', 'data_retornat', 'retornat')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+
+        if request.user.is_superuser:
+            return qs
+
+        if request.user.groups.filter(name="bibliotecario").exists():
+            if request.user.centre:
+                return qs.filter(exemplar__centre=request.user.centre)
+
+        return qs.none()
 
 admin.site.register(Centre)
 admin.site.register(Grup)

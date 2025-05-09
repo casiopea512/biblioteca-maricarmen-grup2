@@ -8,10 +8,13 @@ from .models import *
 from typing import List, Optional, Union, Literal
 import secrets
 from ninja.files import UploadedFile
+from datetime import datetime
 import csv
 from google.oauth2 import id_token
 # from google.auth.transport import requests
 from django.contrib.auth.models import User
+from django.db.models.functions import Substr, Cast
+from django.db.models import IntegerField
 
 api = NinjaAPI()
 
@@ -115,12 +118,16 @@ class CatalegOut(Schema):
     id: int
     titol: Optional[str]
     autor: Optional[str]
+    disponibles: Optional[int] = 0
+    no_disponibles: Optional[int] = 0
+    excluits: Optional[int] = 0 
+    de_prestec: Optional[int] = 0 
 
 class LlibreOut(CatalegOut):
     editorial: Optional[str]
     ISBN: Optional[str]
 
-@api.get("/cataleg", response=List[ CatalegOut])
+@api.get("/cataleg", response=List[CatalegOut])
 @api.get("/cataleg/", response=List[CatalegOut])
 def get_llibres(request):
     qs = Cataleg.objects.all()
@@ -134,6 +141,20 @@ def get_llibres(request):
         if schema.autor is None:
             schema.autor = "No es coneix l'autor"
         
+        # Calcular els exemplars associats al catàleg
+        total = item.exemplar_set.count()
+        
+        excluits = item.exemplar_set.filter(exclos_prestec=True).count()
+        de_prestec = item.exemplar_set.filter(en_prestec=True).count()
+        
+        disponibles = total - excluits - de_prestec
+        no_disponibles = excluits + de_prestec
+
+        schema.disponibles = disponibles
+        schema.no_disponibles = no_disponibles
+        schema.excluits = excluits
+        schema.de_prestec = de_prestec
+
         result.append(schema)
     return result
 
@@ -236,7 +257,7 @@ def get_cataleg(request, id: int):
             "id": exemplar.id,
             "registre": exemplar.registre,
             "exclos_prestec": exemplar.exclos_prestec,
-            "baixa": exemplar.baixa,
+            "en_prestec": exemplar.en_prestec,
             "centre": exemplar.centre.nom if exemplar.centre else "No disponible"
         })
     
@@ -311,7 +332,7 @@ def make_borrow(request, user_id: int, exemplar_id: int):
         )
 
         # Marcar el ejemplar como prestado
-        exemplar.exclos_prestec = True
+        exemplar.en_prestec = True
         exemplar.save()
 
         # Devolver la respuesta
@@ -331,6 +352,7 @@ class PrestecOut(Schema):
     exemplar: str
     data_prestec: str
     data_retorn: Optional[str]
+    data_retornat: Optional[str]
     retornat: bool
     anotacions: Optional[str]
 
@@ -347,6 +369,7 @@ def llistar_prestecs(request, user_id: int):
             exemplar=p.exemplar.registre or "",
             data_prestec=p.data_prestec.isoformat(),
             data_retorn=p.data_retorn.isoformat() if p.data_retorn else None,
+            data_retornat=p.data_retornat.isoformat() if p.data_retornat else None,
             retornat=p.retornat,
             anotacions=p.anotacions,
         ))
@@ -495,3 +518,70 @@ def social_login(request, data: SocialLoginSchema):
 
     except Exception as e:
         return api.create_response(request, {"error": str(e)}, status=400)
+
+# Endpoint para obtener el historial de préstamos de un usuario
+class PrestecHistory(Schema):
+    id: int
+    exemplar_title: str
+    loan_date: datetime
+    return_date: Optional[datetime]
+    notes: Optional[str]
+
+@api.get("/history", response=List[PrestecHistory])
+def get_user_history(request, username: str, role: str):
+    try:
+        # Verificar si el usuario existe
+        user = Usuari.objects.get(username=username)
+        print(f"Usuario encontrado: {user}")
+
+        # Verificar si el rol es válido
+        if role != "normal":
+            print(f"Rol inválido: {role}")
+            return {"error": "No tienes permiso para ver este historial"}, 403
+
+        # Obtener el historial de préstecs del usuario
+        prestecs = Prestec.objects.filter(usuari=user).select_related("exemplar__cataleg")
+        print(f"Préstecs encontrados: {prestecs}")
+
+        history = [
+            {
+                "id": prestec.id,
+                "exemplar_title": prestec.exemplar.cataleg.titol,
+                "loan_date": prestec.data_prestec,
+                "return_date": prestec.data_retorn,
+                "notes": prestec.anotacions,
+            }
+            for prestec in prestecs
+        ]
+        print(f"Historial generado: {history}")
+        return history
+    except Usuari.DoesNotExist:
+        print("Usuario no encontrado")
+        return {"error": "Usuario no encontrado"}, 404
+
+
+# Endpoint per obtenir la llista d'exemplars
+class ExemplarRangeOut(Schema):
+    titol: str
+    registre: str
+    centre: Optional[str]
+    CDU: Optional[str] = None
+
+@api.get("/exemplars/{valor1}/{valor2}", response=List[ExemplarRangeOut])
+def get_exemplars_range(request, valor1: int, valor2: int):
+    # Se utiliza Substr para extraer los 4 caracteres que representan el año del campo "registre"
+    exemplars_qs = Exemplar.objects.annotate(
+        year_num=Cast(Substr('registre', 4, 4), IntegerField())
+    ).filter(
+        year_num__gte=valor1,
+        year_num__lte=valor2
+    )
+    result = []
+    for exemplar in exemplars_qs:
+        result.append({
+            "titol": exemplar.cataleg.titol,
+            "registre": exemplar.registre,
+            "centre": exemplar.centre.nom if exemplar.centre else "No disponible",
+            "CDU": exemplar.cataleg.CDU,
+        })
+    return result

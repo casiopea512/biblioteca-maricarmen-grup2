@@ -91,12 +91,23 @@ class Dispositiu(Cataleg):
 
 class Exemplar(models.Model):
     cataleg = models.ForeignKey(Cataleg, on_delete=models.CASCADE)
-    registre = models.CharField(max_length=100,null=True,blank=True)
+    registre = models.CharField(max_length=100, null=True, blank=True)
     exclos_prestec = models.BooleanField(default=False)
     baixa = models.BooleanField(default=False)
+    en_prestec = models.BooleanField(default=False)
     centre = models.ForeignKey(Centre, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.registre:
+            # Generar el registre único
+            any_actual = now().year
+            num_exemplars = Exemplar.objects.filter(registre__startswith=f"EX-{any_actual}").count() + 1
+            self.registre = f"EX-{any_actual}-{num_exemplars:06d}"
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return "REG:{} - {}".format(self.registre,self.cataleg.titol)
+        return f"REG:{self.registre} - {self.cataleg.titol}"
 
 class Imatge(models.Model):
     cataleg = models.ForeignKey(Cataleg, on_delete=models.CASCADE)
@@ -133,6 +144,7 @@ class Prestec(models.Model):
     exemplar = models.ForeignKey(Exemplar, on_delete=models.CASCADE)
     data_prestec = models.DateField(auto_now_add=True)
     data_retorn = models.DateField(null=True, blank=True)
+    data_retornat = models.DateField(null=True, blank=True)
     retornat = models.BooleanField(default=False)
     anotacions = models.TextField(blank=True,null=True)
     def __str__(self):
