@@ -42,7 +42,7 @@ class Cataleg(models.Model):
     mides = models.CharField(max_length=100,null=True,blank=True)
     tags = models.ManyToManyField(Categoria,blank=True)
     def exemplars(self):
-    	return 0
+        return 0
     def __str__(self):
         return self.titol
 
@@ -125,7 +125,7 @@ class Usuari(AbstractUser):
     centre = models.ForeignKey(Centre,on_delete=models.SET_NULL,null=True,blank=True)
     grup = models.ForeignKey(Grup,on_delete=models.SET_NULL,null=True,blank=True)
     imatge = models.ImageField(upload_to='usuaris/',null=True,blank=True)
-    auth_token = models.CharField(max_length=32,blank=True,null=True)
+    auth_token = models.CharField(max_length=64,blank=True,null=True)
     telefon = models.CharField(max_length=15, null=True, blank=True)
 
 class Reserva(models.Model):
