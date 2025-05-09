@@ -11,7 +11,6 @@ from ninja.files import UploadedFile
 from datetime import datetime
 import csv
 from google.oauth2 import id_token
-# from google.auth.transport import requests
 from django.contrib.auth.models import User
 from django.db.models.functions import Substr, Cast
 from django.db.models import IntegerField
