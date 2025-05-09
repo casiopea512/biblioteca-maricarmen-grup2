@@ -1,3 +1,4 @@
+import requests
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.http import JsonResponse
@@ -8,6 +9,9 @@ from typing import List, Optional, Union, Literal
 import secrets
 from ninja.files import UploadedFile
 import csv
+from google.oauth2 import id_token
+# from google.auth.transport import requests
+from django.contrib.auth.models import User
 
 api = NinjaAPI()
 
@@ -66,7 +70,7 @@ def qui_soc(request):
         "first_name": user.first_name,
         "last_name": user.last_name,
         "imatge": user.imatge.url if user.imatge else None,
-        "telefon": user.telefon,
+        "telefon": user.telefon or "",  # <-- Cambia esto
         "centre": user.centre.nom if hasattr(user, "centre") and user.centre else None,
         "grup": user.grup.nom if hasattr(user, "grup") and user.grup else None,
     }
@@ -258,7 +262,7 @@ def search_users(request, userInfoSearch: str):
     users = Usuari.objects.filter(
         models.Q(username__icontains=userInfoSearch) | 
         models.Q(first_name__icontains=userInfoSearch) | 
-        models.Q(last_name__icontains=userInfoSearch) |
+        models.Q(last_name__icontains(userInfoSearch)) |
         models.Q(email=userInfoSearch) |
         models.Q(telefon__icontains=userInfoSearch)
     )
@@ -417,3 +421,77 @@ def import_usuaris(request, file: UploadedFile):
         feedback.append(f"Línia {i}: Usuari afegit correctament")
 
     return CSVImportResult(created=created, feedback=feedback)
+
+
+def verify_google_token(id_token: str):
+    res = requests.get(f'https://oauth2.googleapis.com/tokeninfo?id_token={id_token}')
+    if (res.status_code != 200):
+        raise ValueError("Token de Google inválido")
+    return res.json()
+
+
+class SocialLoginSchema(Schema):
+    token: str
+    provider: str 
+
+
+@api.post("/social-login/")
+def social_login(request, data: SocialLoginSchema):
+    try:
+        if data.provider == "google":
+            user_info = verify_google_token(data.token)
+            email = user_info["email"]
+            name = user_info.get("given_name", "")
+            last_name = user_info.get("family_name", "")
+            full_name = user_info.get("name", "")
+            # Si no hay given_name/family_name, intenta separar el name
+            if not name or not last_name:
+                if full_name and " " in full_name:
+                    name = full_name.split(" ")[0]
+                    last_name = " ".join(full_name.split(" ")[1:])
+                else:
+                    name = full_name or email.split("@")[0]
+                    last_name = ""
+            # Puedes obtener más campos si los necesitas, como picture, etc.
+
+        else:
+            return api.create_response(request, {"error": "Proveïdor no suportat"}, status=400)
+
+        # Buscar usuario por email
+        user = Usuari.objects.filter(email=email).first()
+        if not user:
+            # Si no existe, crear usuario como en seed_db.py
+            # Puedes asignar centro y grup por defecto si quieres
+            centre, _ = Centre.objects.get_or_create(nom='Institut Esteve Terrades i Illa')
+            grup, _ = Grup.objects.get_or_create(nom='AWS2')
+            user = Usuari.objects.create(
+                username=email.split("@")[0],
+                email=email,
+                first_name=name,
+                last_name=last_name,
+                is_active=True,
+                centre=centre,
+                grup=grup,
+                telefon="",  # Google no da teléfono, puedes dejarlo vacío
+            )
+            # No hay contraseña, solo login social
+
+        # Generar token propio
+        token = secrets.token_hex(16)
+        user.auth_token = token
+        user.save()
+
+        return {
+            "token": token,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "role": "Usuari"
+            }
+        }
+
+    except Exception as e:
+        return api.create_response(request, {"error": str(e)}, status=400)

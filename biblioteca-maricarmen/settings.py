@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os, environ
+from dotenv import load_dotenv
 
 env = environ.Env(
     # set casting, default value
@@ -23,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Take environment variables from .env file
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+load_dotenv()  # Carga las variables del archivo .env
 
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
@@ -30,6 +32,8 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*",])
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 #CSRF_TRUSTED_ORIGINS = ["https://biblio.ieti.site"]
 
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 
 # Application definition
 AUTH_USER_MODEL = 'biblioteca.Usuari'
@@ -50,7 +54,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # Comenta esta línea
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -132,3 +136,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'PATCH',
+    'DELETE',
+    'OPTIONS',
+]
+
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
