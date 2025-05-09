@@ -9,6 +9,8 @@ import secrets
 from ninja.files import UploadedFile
 from datetime import datetime
 import csv
+from django.db.models.functions import Substr, Cast
+from django.db.models import IntegerField
 
 api = NinjaAPI()
 
@@ -479,3 +481,30 @@ def get_user_history(request, username: str, role: str):
     except Usuari.DoesNotExist:
         print("Usuario no encontrado")
         return {"error": "Usuario no encontrado"}, 404
+
+
+# Endpoint per obtenir la llista d'exemplars
+class ExemplarRangeOut(Schema):
+    titol: str
+    registre: str
+    centre: Optional[str]
+    CDU: Optional[str] = None
+
+@api.get("/exemplars/{valor1}/{valor2}", response=List[ExemplarRangeOut])
+def get_exemplars_range(request, valor1: int, valor2: int):
+    # Se utiliza Substr para extraer los 4 caracteres que representan el año del campo "registre"
+    exemplars_qs = Exemplar.objects.annotate(
+        year_num=Cast(Substr('registre', 4, 4), IntegerField())
+    ).filter(
+        year_num__gte=valor1,
+        year_num__lte=valor2
+    )
+    result = []
+    for exemplar in exemplars_qs:
+        result.append({
+            "titol": exemplar.cataleg.titol,
+            "registre": exemplar.registre,
+            "centre": exemplar.centre.nom if exemplar.centre else "No disponible",
+            "CDU": exemplar.cataleg.CDU,
+        })
+    return result
